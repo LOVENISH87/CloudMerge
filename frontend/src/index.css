@@ -1,0 +1,20 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+::selection {
+  background: #1d9e75;
+  color: #0a0a0a;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  color-scheme: dark;
+}
