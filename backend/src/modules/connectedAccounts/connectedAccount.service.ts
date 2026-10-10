@@ -7,6 +7,7 @@ import { encrypt } from "../../common/utils/crypto";
 import { env } from "../../config/env";
 import { Errors } from "../../common/errors/AppError";
 import { AuthService } from "../auth/auth.service";
+import { prisma } from "../../config/prisma";
 
 const CONNECT_PURPOSE = "google_oauth_state";
 const LOGIN_PURPOSE = "google_login_state";
@@ -89,7 +90,8 @@ export class ConnectedAccountService {
     if (!account) throw Errors.notFound("Connected account not found");
 
     const { accessToken, refreshToken } = decryptAccountTokens(account);
-    return this.fetchAndStoreQuota(accountId, accessToken, refreshToken);
+    await this.fetchAndStoreQuota(accountId, accessToken, refreshToken);
+    await this.syncExistingFiles(userId, accountId, accessToken, refreshToken);
   }
 
   private async fetchAndStoreQuota(accountId: string, accessToken: string, refreshToken: string) {
@@ -97,5 +99,31 @@ export class ConnectedAccountService {
     const quota = await drive.getQuota();
     await this.repo.updateQuota(accountId, BigInt(quota.totalBytes), BigInt(quota.usedBytes));
     return { totalBytes: quota.totalBytes, usedBytes: quota.usedBytes };
+  }
+
+  private async syncExistingFiles(userId: string, accountId: string, accessToken: string, refreshToken: string) {
+    const drive = await GoogleDriveClient.create(accessToken, refreshToken);
+    const existing = await drive.listExistingFiles();
+    
+    // upsert files so they appear in CloudMerge unified view
+    for (const f of existing) {
+      await prisma.file.upsert({
+        where: { id: f.fileId }, // we temporarily map CloudMerge file.id directly to googleFileId for imports
+        update: {
+          name: f.name,
+          sizeBytes: BigInt(f.sizeBytes),
+          mimeType: f.mimeType
+        },
+        create: {
+          id: f.fileId,
+          userId,
+          connectedAccountId: accountId,
+          name: f.name,
+          mimeType: f.mimeType,
+          sizeBytes: BigInt(f.sizeBytes),
+          googleFileId: f.fileId
+        }
+      });
+    }
   }
 }

@@ -14,11 +14,19 @@ export interface DriveUploadResult {
   sizeBytes: number;
 }
 
+export interface DriveFile {
+  fileId: string;
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+}
+
 export interface IGoogleDriveClient {
   getQuota(): Promise<DriveQuota>;
   uploadFile(name: string, mimeType: string, stream: Readable): Promise<DriveUploadResult>;
   downloadFile(fileId: string): Promise<Readable>;
   deleteFile(fileId: string): Promise<void>;
+  listExistingFiles(): Promise<DriveFile[]>;
 }
 
 export class GoogleDriveClient implements IGoogleDriveClient {
@@ -65,5 +73,19 @@ export class GoogleDriveClient implements IGoogleDriveClient {
 
   async deleteFile(fileId: string): Promise<void> {
     await this.drive.files.delete({ fileId });
+  }
+
+  async listExistingFiles(): Promise<DriveFile[]> {
+    const res = await this.drive.files.list({
+      q: "trashed=false and mimeType != 'application/vnd.google-apps.folder'",
+      fields: "files(id, name, mimeType, size)",
+      pageSize: 100, // get top 100 files for fast sync
+    });
+    return (res.data.files ?? []).map((f) => ({
+      fileId: f.id!,
+      name: f.name!,
+      mimeType: f.mimeType ?? "application/octet-stream",
+      sizeBytes: Number(f.size ?? 0),
+    }));
   }
 }
