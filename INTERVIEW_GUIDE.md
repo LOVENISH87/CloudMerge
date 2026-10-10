@@ -1,12 +1,32 @@
 # CloudMerge: Senior-Level Technical Interview Guide 🎯
 
-> **A comprehensive cheat sheet covering System Design, Algorithms (Bin-Packing), Concurrency, Security, and Production War Stories for CloudMerge.**
+> **A comprehensive cheat sheet covering Product Value Proposition, System Design, Algorithms (Bin-Packing), Concurrency, Security, and Production War Stories for CloudMerge.**
 
 ---
 
 ## 📌 Elevator Pitch (30-Second Summary)
 
 > *"CloudMerge is a virtual cloud file system that pools multiple fragmented Google Drive accounts into a single, high-capacity virtual drive. It solves the 15 GB quota limitation by applying the **Strategy Pattern** to the **Online Bin-Packing Problem**, routing files using **Worst-Fit** and **Best-Fit** allocation heuristics with automatic failover on cloud provider quota limits. The backend uses Node.js, Express, TypeScript, and Prisma with AES-256-GCM token encryption, while the frontend is built with React 19, Vite, and NextUI."*
+
+---
+
+## 🥊 Part 0: The Core Value Proposition ("Why Not Just Use Google Drive Directly?")
+
+### Q0: "If Google Drive already exists, why would anyone use CloudMerge?"
+* **The Reality of Multiple Accounts**:
+  * Most users juggle 3 to 4 Google accounts (personal, university, work, side projects), totaling **45–60 GB of free cloud storage**.
+  * Without CloudMerge, users suffer from **storage fragmentation**: Account A hits 14.9 GB / 15 GB and throws "Storage Full" errors, while Accounts B, C, and D sit 90% empty with unused free space.
+  * Users either waste time switching browser profiles and wondering *"Which drive did I upload my tax document to?"*, or they cave in and pay \$20–\$100/year for Google One subscriptions.
+
+* **Key Differentiators & Why Users Choose CloudMerge**:
+  1. **Single Virtual Pool**: Combines distinct 15 GB accounts into one unified 60 GB drive. Users log in once and see their entire storage landscape in a single dashboard.
+  2. **Automated Quota Routing (Zero Manual Math)**: When uploading a 4 GB video, users don't have to check free space account by account. The backend **Worst-Fit Bin-Packing algorithm** automatically routes the file to the drive with the highest available headroom.
+  3. **In-Flight Quota Failover**: If an account hits a live quota limit mid-upload, Google Drive aborts and fails. CloudMerge catches the `403 storageQuotaExceeded` error under the hood and seamlessly routes the upload to the next candidate account without failing the user's action.
+  4. **Single-Pane Global Search & Folder Tree**: Search and organize files across all accounts in a single virtual file explorer rather than searching separate drives independently.
+  5. **Cost Savings**: Allows users to unlock 100% of their existing free-tier cloud quotas across accounts before paying for premium cloud storage.
+
+* **The 1-Line Punchline**:
+  > *"Google Drive gives you fragmented 15 GB islands. CloudMerge bridges them into a single, high-capacity virtual continent."*
 
 ---
 
@@ -109,6 +129,7 @@ Prisma ORM (MySQL on port 3306)      ▼
 
 | Topic | Key Term | Explanation |
 | :--- | :--- | :--- |
+| **Product Value** | Storage Unification | Eliminates profile juggling and turns fragmented 15 GB quotas into one pool. |
 | **Algorithm** | Online Bin-Packing | Packing items of unknown future size into limited containers. |
 | **Design Pattern** | Strategy Pattern | Swappable routing algorithms (`Worst-Fit`, `Best-Fit`) behind an interface. |
 | **Security** | AES-256-GCM (AEAD) | Symmetric cipher with authenticated verification tags. |
