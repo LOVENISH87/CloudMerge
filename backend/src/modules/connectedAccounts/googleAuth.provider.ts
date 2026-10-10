@@ -23,7 +23,7 @@ export class GoogleAuthProvider implements IGoogleAuthProvider {
     const client = await this.client();
     return client.generateAuthUrl({
       access_type: "offline",
-      prompt: "consent",
+      prompt: "consent select_account",
       scope: ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/userinfo.email"],
       state,
     });
