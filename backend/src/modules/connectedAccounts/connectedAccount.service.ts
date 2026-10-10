@@ -90,8 +90,10 @@ export class ConnectedAccountService {
     if (!account) throw Errors.notFound("Connected account not found");
 
     const { accessToken, refreshToken } = decryptAccountTokens(account);
-    await this.fetchAndStoreQuota(accountId, accessToken, refreshToken);
+    const quota = await this.fetchAndStoreQuota(accountId, accessToken, refreshToken);
     await this.syncExistingFiles(userId, accountId, accessToken, refreshToken);
+    
+    return quota; // Fix: We must return the quota object here so the controller has something to send as JSON!
   }
 
   private async fetchAndStoreQuota(accountId: string, accessToken: string, refreshToken: string) {
