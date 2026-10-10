@@ -41,6 +41,10 @@ export function Dashboard() {
   const onUploadDone = () => {
     setFilesRefreshKey((k) => k + 1);
     refreshSummary();
+    // Auto clear the upload panel after 3 seconds on success
+    setTimeout(() => {
+      setUpload(null);
+    }, 3000);
   };
 
   const poolSummary = summary
@@ -56,8 +60,18 @@ export function Dashboard() {
       <main className="flex-1 flex flex-col relative overflow-hidden bg-content1/30">
         <header className="h-14 min-h-[56px] border-b border-divider flex items-center px-6 justify-between bg-content1/50 backdrop-blur-md sticky top-0 z-10">
           <h1 className="text-lg font-semibold tracking-tight text-foreground/90 capitalize">{activeView.replace("-", " ")}</h1>
-          <div className="font-mono text-xs text-default-500 font-medium tracking-wide bg-content2 px-3 py-1.5 rounded-full border border-divider">
-            {poolSummary}
+          
+          <div className="flex items-center gap-4">
+            {/* The Upload panel now sits in the top right header area! */}
+            {upload && (
+              <div className="shadow-lg rounded-xl overflow-hidden border border-divider bg-content1 mr-4">
+                 <UploadPanel upload={upload} />
+              </div>
+            )}
+            
+            <div className="font-mono text-xs text-default-500 font-medium tracking-wide bg-content2 px-3 py-1.5 rounded-full border border-divider">
+              {poolSummary}
+            </div>
           </div>
         </header>
         
@@ -76,12 +90,6 @@ export function Dashboard() {
             {activeView === "settings" && <SettingsView summary={summary} onChange={refreshSummary} />}
           </div>
         </div>
-
-        {upload && (
-          <div className="absolute bottom-6 right-6 shadow-2xl rounded-xl overflow-hidden border border-divider bg-content1">
-             <UploadPanel upload={upload} />
-          </div>
-        )}
       </main>
 
       {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} onChanged={() => setFilesRefreshKey(k => k + 1)} />}

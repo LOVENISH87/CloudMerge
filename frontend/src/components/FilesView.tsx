@@ -19,8 +19,18 @@ import {
   CardBody, 
   CardFooter,
   Pagination,
-  ButtonGroup
+  ButtonGroup,
+  Chip
 } from "@nextui-org/react";
+
+// Pre-defined color palette for drives
+const DRIVE_COLORS = [
+  "primary",
+  "secondary",
+  "success",
+  "warning",
+  "danger",
+] as const;
 
 export function FilesView({
   refreshKey,
@@ -36,7 +46,7 @@ export function FilesView({
   onUploadDone: () => void;
 }) {
   const [files, setFiles] = useState<FileItem[]>([]);
-  const [accountEmails, setAccountEmails] = useState<Record<string, string>>({});
+  const [accountsMeta, setAccountsMeta] = useState<Record<string, { email: string, colorIndex: number }>>({});
   const [selected, setSelected] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
   const [search, setSearch] = useState("");
@@ -50,9 +60,14 @@ export function FilesView({
     connectedAccountsApi
       .list()
       .then((accounts) => {
-        const map: Record<string, string> = {};
-        accounts.forEach((a) => (map[a.id] = a.googleAccountEmail.split("@")[0]));
-        setAccountEmails(map);
+        const map: Record<string, { email: string, colorIndex: number }> = {};
+        accounts.forEach((a, index) => {
+          map[a.id] = {
+            email: a.googleAccountEmail.split("@")[0],
+            colorIndex: index % DRIVE_COLORS.length
+          };
+        });
+        setAccountsMeta(map);
       })
       .catch(() => {});
   }, [refreshKey]);
@@ -77,6 +92,7 @@ export function FilesView({
       onUploadDone();
     } catch (err) {
       onUploadProgress({ fileName: file.name, pct: 0, error: (err as Error).message });
+      setTimeout(() => onUploadDone(), 5000); 
     }
   };
 
@@ -114,10 +130,10 @@ export function FilesView({
           />
 
           <ButtonGroup size="sm" variant="flat">
-            <Button isIconOnly onClick={() => setViewMode("list")} className={viewMode === "list" ? "bg-default-200" : ""}>
+            <Button isIconOnly onPress={() => setViewMode("list")} className={viewMode === "list" ? "bg-default-200" : ""}>
               <List size={16} />
             </Button>
-            <Button isIconOnly onClick={() => setViewMode("grid")} className={viewMode === "grid" ? "bg-default-200" : ""}>
+            <Button isIconOnly onPress={() => setViewMode("grid")} className={viewMode === "grid" ? "bg-default-200" : ""}>
               <Grid size={16} />
             </Button>
           </ButtonGroup>
@@ -137,10 +153,10 @@ export function FilesView({
             <p className="text-sm">No files found</p>
           </div>
         ) : viewMode === "grid" ? (
-          // GRID VIEW (NextUI Cards)
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {paginatedFiles.map(f => {
               const sel = selected === f.id;
+              const meta = accountsMeta[f.connectedAccountId];
               return (
                 <Card 
                   key={f.id} 
@@ -154,16 +170,22 @@ export function FilesView({
                   <CardBody className="flex flex-col items-center justify-center py-6 overflow-hidden">
                     {getFileIcon(f.mimeType, 48)}
                   </CardBody>
-                  <CardFooter className="flex flex-col items-start px-4 pb-4 pt-0 gap-1 overflow-hidden">
+                  <CardFooter className="flex flex-col items-start px-4 pb-4 pt-0 gap-1.5 overflow-hidden">
                     <p className="text-xs font-semibold text-foreground truncate w-full" title={f.name}>{f.name}</p>
-                    <p className="text-[10px] text-default-500">{formatBytes(f.sizeBytes)}</p>
+                    <div className="flex justify-between w-full items-center">
+                      <p className="text-[10px] text-default-500">{formatBytes(f.sizeBytes)}</p>
+                      {meta && (
+                        <Chip size="sm" variant="flat" color={DRIVE_COLORS[meta.colorIndex]} className="text-[9px] h-4 px-1" title={`Stored on ${meta.email}`}>
+                          Drive {meta.colorIndex + 1}
+                        </Chip>
+                      )}
+                    </div>
                   </CardFooter>
                 </Card>
               );
             })}
           </div>
         ) : (
-          // LIST VIEW (NextUI Table)
           <Table 
             aria-label="Files table" 
             selectionMode="single" 
@@ -174,27 +196,36 @@ export function FilesView({
           >
             <TableHeader>
               <TableColumn>NAME</TableColumn>
-              <TableColumn>ACCOUNT</TableColumn>
+              <TableColumn>DRIVE</TableColumn>
               <TableColumn>SIZE</TableColumn>
               <TableColumn>MODIFIED</TableColumn>
             </TableHeader>
             <TableBody items={paginatedFiles}>
-              {(f) => (
-                <TableRow 
-                  key={f.id} 
-                  onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setSelected(f.id); onContextMenu({ x: e.clientX, y: e.clientY, file: f }); }}
-                >
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      {getFileIcon(f.mimeType, 20)}
-                      <span className="text-sm truncate max-w-[300px]">{f.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm text-default-500">{accountEmails[f.connectedAccountId] ?? "—"}</TableCell>
-                  <TableCell className="text-sm font-mono">{formatBytes(f.sizeBytes)}</TableCell>
-                  <TableCell className="text-sm text-default-500">{formatDate(f.createdAt)}</TableCell>
-                </TableRow>
-              )}
+              {(f) => {
+                const meta = accountsMeta[f.connectedAccountId];
+                return (
+                  <TableRow 
+                    key={f.id} 
+                    onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setSelected(f.id); onContextMenu({ x: e.clientX, y: e.clientY, file: f }); }}
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        {getFileIcon(f.mimeType, 20)}
+                        <span className="text-sm truncate max-w-[300px]">{f.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {meta ? (
+                        <Chip size="sm" variant="flat" color={DRIVE_COLORS[meta.colorIndex]}>
+                          {meta.email}
+                        </Chip>
+                      ) : "—"}
+                    </TableCell>
+                    <TableCell className="text-sm font-mono">{formatBytes(f.sizeBytes)}</TableCell>
+                    <TableCell className="text-sm text-default-500">{formatDate(f.createdAt)}</TableCell>
+                  </TableRow>
+                )
+              }}
             </TableBody>
           </Table>
         )}
