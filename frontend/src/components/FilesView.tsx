@@ -1,13 +1,26 @@
-import { useEffect, useRef, useState } from "react";
-import { theme } from "../theme";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { filesApi, connectedAccountsApi } from "../api/resources";
 import type { FileItem } from "../api/types";
 import { formatBytes, formatDate } from "../utils/format";
 import { uploadFile } from "../api/upload";
 import type { MenuState } from "./ContextMenu";
 import type { UploadState } from "./UploadPanel";
-import { Button } from "./Button";
-import { File, Image as ImageIcon, FileText, Video, FileArchive, Folder, Search, Grid, List, ChevronLeft, ChevronRight } from "lucide-react";
+import { File, Image as ImageIcon, FileText, Video, FileArchive, Folder, Search, Grid, List } from "lucide-react";
+import { 
+  Button, 
+  Input, 
+  Table, 
+  TableHeader, 
+  TableColumn, 
+  TableBody, 
+  TableRow, 
+  TableCell, 
+  Card, 
+  CardBody, 
+  CardFooter,
+  Pagination,
+  ButtonGroup
+} from "@nextui-org/react";
 
 export function FilesView({
   refreshKey,
@@ -44,12 +57,16 @@ export function FilesView({
       .catch(() => {});
   }, [refreshKey]);
 
-  const filteredFiles = files.filter(f => f.name.toLowerCase().includes(search.toLowerCase()));
-  const totalPages = Math.ceil(filteredFiles.length / ITEMS_PER_PAGE) || 1;
-  const paginatedFiles = filteredFiles.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
-  const totalSize = filteredFiles.reduce((s, f) => s + Number(f.sizeBytes), 0);
+  const filteredFiles = useMemo(() => {
+    return files.filter(f => f.name.toLowerCase().includes(search.toLowerCase()));
+  }, [files, search]);
 
-  // Reset page when searching
+  const totalPages = Math.ceil(filteredFiles.length / ITEMS_PER_PAGE) || 1;
+  const paginatedFiles = useMemo(() => {
+    const start = (page - 1) * ITEMS_PER_PAGE;
+    return filteredFiles.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredFiles, page]);
+
   useEffect(() => setPage(1), [search]);
 
   const handleFilePicked = async (file: globalThis.File) => {
@@ -64,144 +81,140 @@ export function FilesView({
   };
 
   const getFileIcon = (mimeType: string, size: number) => {
-    if (mimeType.includes("image/")) return <ImageIcon size={size} color={theme.accent} />;
-    if (mimeType.includes("video/")) return <Video size={size} color="#E53935" />;
-    if (mimeType.includes("pdf") || mimeType.includes("document")) return <FileText size={size} color="#1E88E5" />;
-    if (mimeType.includes("zip") || mimeType.includes("tar")) return <FileArchive size={size} color="#FDD835" />;
-    if (mimeType === "application/vnd.google-apps.folder") return <Folder size={size} color={theme.accent} fill={theme.accent} />;
-    return <File size={size} color={theme.muted} />;
+    if (mimeType.includes("image/")) return <ImageIcon size={size} className="text-primary" />;
+    if (mimeType.includes("video/")) return <Video size={size} className="text-danger" />;
+    if (mimeType.includes("pdf") || mimeType.includes("document")) return <FileText size={size} className="text-blue-500" />;
+    if (mimeType.includes("zip") || mimeType.includes("tar")) return <FileArchive size={size} className="text-yellow-500" />;
+    if (mimeType === "application/vnd.google-apps.folder") return <Folder size={size} className="text-primary fill-primary" />;
+    return <File size={size} className="text-default-500" />;
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: theme.mono, fontSize: 13, color: theme.muted }}>
-          <span style={{ fontWeight: 600 }}>CloudMerge</span>
-          <span style={{ color: theme.border }}>/</span>
-          <span style={{ color: theme.text }}>All Files</span>
+    <div className="flex flex-col h-full overflow-hidden w-full px-2">
+      {/* HEADER */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2 font-mono text-sm text-default-500">
+          <span className="font-semibold text-foreground">CloudMerge</span>
+          <span>/</span>
+          <span>All Files</span>
         </div>
         
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {/* Search Bar */}
-          <div style={{ position: "relative" }}>
-            <Search size={14} color={theme.muted} style={{ position: "absolute", left: 10, top: 9 }} />
-            <input 
-              type="text" 
-              placeholder="Search files..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{
-                background: theme.panel, border: `1px solid ${theme.border}`, color: theme.text,
-                padding: "6px 12px 6px 30px", borderRadius: 20, outline: "none", fontSize: 13, width: 220
-              }}
-            />
-          </div>
+        <div className="flex items-center gap-4">
+          <Input
+            classNames={{
+              base: "w-64",
+              input: "text-sm",
+            }}
+            placeholder="Search files..."
+            size="sm"
+            startContent={<Search size={16} className="text-default-400" />}
+            value={search}
+            onValueChange={setSearch}
+            isClearable
+          />
 
-          {/* View Toggles */}
-          <div style={{ display: "flex", background: theme.panel, border: `1px solid ${theme.border}`, borderRadius: 6, overflow: "hidden" }}>
-            <button 
-              onClick={() => setViewMode("list")} 
-              style={{ background: viewMode === "list" ? theme.border : "transparent", border: "none", padding: "6px 10px", cursor: "pointer", display: "flex" }}
-            >
-              <List size={16} color={viewMode === "list" ? theme.text : theme.muted} />
-            </button>
-            <button 
-              onClick={() => setViewMode("grid")} 
-              style={{ background: viewMode === "grid" ? theme.border : "transparent", border: "none", padding: "6px 10px", cursor: "pointer", display: "flex" }}
-            >
-              <Grid size={16} color={viewMode === "grid" ? theme.text : theme.muted} />
-            </button>
-          </div>
+          <ButtonGroup size="sm" variant="flat">
+            <Button isIconOnly onClick={() => setViewMode("list")} className={viewMode === "list" ? "bg-default-200" : ""}>
+              <List size={16} />
+            </Button>
+            <Button isIconOnly onClick={() => setViewMode("grid")} className={viewMode === "grid" ? "bg-default-200" : ""}>
+              <Grid size={16} />
+            </Button>
+          </ButtonGroup>
 
-          <Button variant="primary" onClick={() => fileInput.current?.click()}>+ Upload</Button>
-          <input ref={fileInput} type="file" style={{ display: "none" }} onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFilePicked(file); e.target.value = ""; }} />
+          <Button color="primary" size="sm" onPress={() => fileInput.current?.click()} className="font-semibold">
+            + Upload
+          </Button>
+          <input ref={fileInput} type="file" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFilePicked(file); e.target.value = ""; }} />
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto", minHeight: 0, paddingRight: 8 }}>
+      {/* BODY */}
+      <div className="flex-1 overflow-y-auto pb-6 pr-2">
         {paginatedFiles.length === 0 ? (
-          <div style={{ padding: 40, textAlign: "center", color: theme.muted, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-            <Folder size={48} opacity={0.5} />
-            <span>No files found</span>
+          <div className="flex flex-col items-center justify-center h-full gap-4 text-default-400">
+            <Folder size={64} className="opacity-50" />
+            <p className="text-sm">No files found</p>
           </div>
         ) : viewMode === "grid" ? (
-          // GRID VIEW
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 16, paddingBottom: 20 }}>
+          // GRID VIEW (NextUI Cards)
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {paginatedFiles.map(f => {
               const sel = selected === f.id;
               return (
-                <div
-                  key={f.id}
-                  onClick={(e) => { e.stopPropagation(); setSelected(f.id); }}
+                <Card 
+                  key={f.id} 
+                  isPressable 
+                  isHoverable
+                  onPress={() => setSelected(f.id)}
                   onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setSelected(f.id); onContextMenu({ x: e.clientX, y: e.clientY, file: f }); }}
-                  style={{
-                    display: "flex", flexDirection: "column", alignItems: "center", padding: 12,
-                    background: sel ? theme.panel : "transparent", border: `1px solid ${sel ? theme.accent : "transparent"}`,
-                    borderRadius: 8, cursor: "default", transition: "all 0.1s"
-                  }}
-                  onMouseEnter={(e) => { if (!sel) (e.currentTarget.style.background = theme.panel) }}
-                  onMouseLeave={(e) => { if (!sel) (e.currentTarget.style.background = "transparent") }}
+                  className={`border-2 transition-all ${sel ? "border-primary bg-content2" : "border-transparent bg-content1"}`}
+                  shadow="sm"
                 >
-                  <div style={{ marginBottom: 12 }}>{getFileIcon(f.mimeType, 48)}</div>
-                  <div style={{ fontSize: 12, color: theme.text, textAlign: "center", wordBreak: "break-word", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                    {f.name}
-                  </div>
-                  <div style={{ fontSize: 10, color: theme.muted, marginTop: 4 }}>{formatBytes(f.sizeBytes)}</div>
-                </div>
+                  <CardBody className="flex flex-col items-center justify-center py-6 overflow-hidden">
+                    {getFileIcon(f.mimeType, 48)}
+                  </CardBody>
+                  <CardFooter className="flex flex-col items-start px-4 pb-4 pt-0 gap-1 overflow-hidden">
+                    <p className="text-xs font-semibold text-foreground truncate w-full" title={f.name}>{f.name}</p>
+                    <p className="text-[10px] text-default-500">{formatBytes(f.sizeBytes)}</p>
+                  </CardFooter>
+                </Card>
               );
             })}
           </div>
         ) : (
-          // LIST VIEW
-          <div style={{ border: `1px solid ${theme.border}`, borderRadius: 8, overflow: "hidden" }}>
-             <div style={{ display: "flex", height: 36, alignItems: "center", background: theme.panel, borderBottom: `1px solid ${theme.border}`, fontSize: 11, color: theme.muted, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>
-              <div style={{ flex: 1, padding: "0 16px" }}>Name</div>
-              <div style={{ width: 140, padding: "0 12px" }}>Account</div>
-              <div style={{ width: 100, padding: "0 12px", textAlign: "right" }}>Size</div>
-              <div style={{ width: 140, padding: "0 16px" }}>Modified</div>
-            </div>
-            {paginatedFiles.map(f => {
-              const sel = selected === f.id;
-              return (
-                <div
-                  key={f.id}
-                  onClick={(e) => { e.stopPropagation(); setSelected(f.id); }}
+          // LIST VIEW (NextUI Table)
+          <Table 
+            aria-label="Files table" 
+            selectionMode="single" 
+            color="primary"
+            selectedKeys={selected ? [selected] : []}
+            onRowAction={(key) => setSelected(key as string)}
+            classNames={{ wrapper: "bg-content1", td: "py-3" }}
+          >
+            <TableHeader>
+              <TableColumn>NAME</TableColumn>
+              <TableColumn>ACCOUNT</TableColumn>
+              <TableColumn>SIZE</TableColumn>
+              <TableColumn>MODIFIED</TableColumn>
+            </TableHeader>
+            <TableBody items={paginatedFiles}>
+              {(f) => (
+                <TableRow 
+                  key={f.id} 
                   onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setSelected(f.id); onContextMenu({ x: e.clientX, y: e.clientY, file: f }); }}
-                  style={{
-                    display: "flex", height: 44, alignItems: "center", borderBottom: `1px solid ${theme.border}`,
-                    background: sel ? theme.panel : "transparent", cursor: "default"
-                  }}
-                  onMouseEnter={(e) => { if (!sel) (e.currentTarget.style.background = "rgba(255,255,255,0.02)") }}
-                  onMouseLeave={(e) => { if (!sel) (e.currentTarget.style.background = "transparent") }}
                 >
-                  <div style={{ flex: 1, padding: "0 16px", display: "flex", alignItems: "center", gap: 12, overflow: "hidden" }}>
-                    {getFileIcon(f.mimeType, 18)}
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13 }}>{f.name}</span>
-                  </div>
-                  <div style={{ width: 140, padding: "0 12px", fontSize: 12, color: theme.muted }}>{accountEmails[f.connectedAccountId] ?? "—"}</div>
-                  <div style={{ width: 100, padding: "0 12px", textAlign: "right", fontFamily: theme.mono, fontSize: 12 }}>{formatBytes(f.sizeBytes)}</div>
-                  <div style={{ width: 140, padding: "0 16px", fontSize: 12, color: theme.muted }}>{formatDate(f.createdAt)}</div>
-                </div>
-              );
-            })}
-          </div>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      {getFileIcon(f.mimeType, 20)}
+                      <span className="text-sm truncate max-w-[300px]">{f.name}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-sm text-default-500">{accountEmails[f.connectedAccountId] ?? "—"}</TableCell>
+                  <TableCell className="text-sm font-mono">{formatBytes(f.sizeBytes)}</TableCell>
+                  <TableCell className="text-sm text-default-500">{formatDate(f.createdAt)}</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         )}
       </div>
 
-      {/* Pagination Footer */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", height: 44, borderTop: `1px solid ${theme.border}`, marginTop: "auto", fontSize: 12, color: theme.muted, paddingTop: 16 }}>
-        <span>Showing {filteredFiles.length} files ({formatBytes(totalSize)})</span>
+      {/* FOOTER */}
+      <div className="flex justify-between items-center py-4 mt-auto border-t border-divider">
+        <p className="text-xs text-default-500 font-mono">
+          {filteredFiles.length} files total
+        </p>
         
         {totalPages > 1 && (
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ display: "flex", alignItems: "center", background: "none", border: "none", color: page === 1 ? theme.border : theme.text, cursor: page === 1 ? "default" : "pointer" }}>
-              <ChevronLeft size={16} /> Prev
-            </button>
-            <span style={{ fontFamily: theme.mono }}>{page} / {totalPages}</span>
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ display: "flex", alignItems: "center", background: "none", border: "none", color: page === totalPages ? theme.border : theme.text, cursor: page === totalPages ? "default" : "pointer" }}>
-              Next <ChevronRight size={16} />
-            </button>
-          </div>
+          <Pagination 
+            isCompact 
+            showControls 
+            color="primary" 
+            page={page} 
+            total={totalPages} 
+            onChange={setPage} 
+          />
         )}
       </div>
     </div>
