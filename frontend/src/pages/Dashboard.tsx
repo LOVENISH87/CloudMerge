@@ -41,7 +41,7 @@ export function Dashboard() {
   const onUploadDone = () => {
     setFilesRefreshKey((k) => k + 1);
     refreshSummary();
-    // Auto clear the upload panel after 3 seconds on success
+    // Auto clear the upload panel exactly 3 seconds after success OR failure
     setTimeout(() => {
       setUpload(null);
     }, 3000);
@@ -61,17 +61,17 @@ export function Dashboard() {
         <header className="h-14 min-h-[56px] border-b border-divider flex items-center px-6 justify-between bg-content1/50 backdrop-blur-md sticky top-0 z-10">
           <h1 className="text-lg font-semibold tracking-tight text-foreground/90 capitalize">{activeView.replace("-", " ")}</h1>
           
-          <div className="flex items-center gap-4">
-            {/* The Upload panel now sits in the top right header area! */}
-            {upload && (
-              <div className="shadow-lg rounded-xl overflow-hidden border border-divider bg-content1 mr-4">
-                 <UploadPanel upload={upload} />
-              </div>
-            )}
-            
+          <div className="flex items-center gap-4 relative">
             <div className="font-mono text-xs text-default-500 font-medium tracking-wide bg-content2 px-3 py-1.5 rounded-full border border-divider">
               {poolSummary}
             </div>
+            
+            {/* The Upload panel sits exactly right here below the header using absolute positioning */}
+            {upload && (
+              <div className="absolute top-[110%] right-0 z-50 shadow-2xl rounded-xl overflow-hidden border border-divider bg-content1">
+                 <UploadPanel upload={upload} />
+              </div>
+            )}
           </div>
         </header>
         
