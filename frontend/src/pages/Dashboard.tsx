@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { theme } from "../theme";
 import type { View } from "../types";
 import { Sidebar } from "../components/Sidebar";
 import { QuotaView } from "../components/QuotaView";
@@ -12,6 +11,7 @@ import type { MenuState } from "../components/ContextMenu";
 import { storageApi } from "../api/resources";
 import type { StorageSummary } from "../api/types";
 import { formatGB } from "../utils/format";
+import { Divider } from "@nextui-org/react";
 
 export type { View };
 
@@ -47,51 +47,44 @@ export function Dashboard() {
     ? `pool: ${formatGB(summary.usedBytes)} / ${formatGB(summary.totalBytes)}`
     : "pool: —";
 
-  const titles: Record<View, string> = { quota: "QUOTA TRACKER", files: "ALL FILES", settings: "CONNECTED ACCOUNTS" };
-
   return (
-    <div
-      style={{
-        display: "flex",
-        height: "100vh",
-        width: "100%",
-        background: theme.bg,
-        color: theme.text,
-        fontFamily: theme.sans,
-        fontSize: 13,
-        overflow: "hidden",
-      }}
-    >
-      <Sidebar activeView={activeView} setView={setActiveView} poolSummary={poolSummary} />
-
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <div
-          style={{
-            height: 48,
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "0 24px",
-            borderBottom: `1px solid ${theme.border}`,
-            background: theme.panel,
-          }}
-        >
-          <span style={{ fontFamily: theme.mono, fontWeight: 700, fontSize: 13, letterSpacing: 0.5 }}>{titles[activeView]}</span>
-          <span style={{ fontFamily: theme.mono, fontSize: 11, color: theme.muted }}>cloudmerge v1.0</span>
+    <div className="flex h-screen w-full bg-background text-foreground overflow-hidden font-sans">
+      <Sidebar active={activeView} onSelect={setActiveView} />
+      
+      <Divider orientation="vertical" />
+      
+      <main className="flex-1 flex flex-col relative overflow-hidden bg-content1/30">
+        <header className="h-14 min-h-[56px] border-b border-divider flex items-center px-6 justify-between bg-content1/50 backdrop-blur-md sticky top-0 z-10">
+          <h1 className="text-lg font-semibold tracking-tight text-foreground/90 capitalize">{activeView.replace("-", " ")}</h1>
+          <div className="font-mono text-xs text-default-500 font-medium tracking-wide bg-content2 px-3 py-1.5 rounded-full border border-divider">
+            {poolSummary}
+          </div>
+        </header>
+        
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 relative">
+          <div className="max-w-7xl mx-auto h-full">
+            {activeView === "quota" && <QuotaView summary={summary} />}
+            {activeView === "files" && (
+              <FilesView
+                refreshKey={filesRefreshKey}
+                onContextMenu={setMenu}
+                onUploadStart={setUpload}
+                onUploadProgress={setUpload}
+                onUploadDone={onUploadDone}
+              />
+            )}
+            {activeView === "settings" && <SettingsView summary={summary} onChange={refreshSummary} />}
+          </div>
         </div>
 
-        <div style={{ flex: 1, overflow: "auto", padding: 24, paddingBottom: 24 }}>
-          {activeView === "quota" && <QuotaView summary={summary} />}
-          {activeView === "files" && (
-            <FilesView refreshKey={filesRefreshKey} onContextMenu={setMenu} onUploadStart={setUpload} onUploadProgress={setUpload} onUploadDone={onUploadDone} />
-          )}
-          {activeView === "settings" && <SettingsView summary={summary} onChange={refreshSummary} />}
-        </div>
-      </div>
+        {upload && (
+          <div className="absolute bottom-6 right-6 shadow-2xl rounded-xl overflow-hidden border border-divider bg-content1">
+             <UploadPanel upload={upload} />
+          </div>
+        )}
+      </main>
 
-      {upload && <UploadPanel upload={upload} />}
-      {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} onChanged={onUploadDone} />}
+      {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} onChanged={() => setFilesRefreshKey(k => k + 1)} />}
     </div>
   );
 }
