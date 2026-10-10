@@ -1,7 +1,8 @@
-const API_URL = import.meta.env.VITE_API_URL as string;
+export const API_URL = import.meta.env.VITE_API_URL as string;
 
 let accessToken: string | null = null;
 let onAuthLost: (() => void) | null = null;
+let refreshPromise: Promise<boolean> | null = null;
 
 export function setAccessToken(token: string | null) {
   accessToken = token;
@@ -16,20 +17,32 @@ export function setOnAuthLost(fn: () => void) {
 }
 
 async function tryRefresh(): Promise<boolean> {
-  const refreshToken = localStorage.getItem("refreshToken");
-  if (!refreshToken) return false;
+  if (refreshPromise) return refreshPromise;
 
-  const res = await fetch(`${API_URL}/auth/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken }),
-  });
-  if (!res.ok) return false;
+  refreshPromise = (async () => {
+    try {
+      const refreshToken = localStorage.getItem("refreshToken");
+      if (!refreshToken) return false;
 
-  const data = await res.json();
-  accessToken = data.accessToken;
-  localStorage.setItem("refreshToken", data.refreshToken);
-  return true;
+      const res = await fetch(`${API_URL}/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      });
+      if (!res.ok) return false;
+
+      const data = await res.json();
+      accessToken = data.accessToken;
+      localStorage.setItem("refreshToken", data.refreshToken);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
 }
 
 interface ApiOptions extends RequestInit {
@@ -62,5 +75,3 @@ export async function api<T = unknown>(path: string, options: ApiOptions = {}): 
   if (res.status === 204) return undefined as T;
   return res.json();
 }
-
-export { API_URL };

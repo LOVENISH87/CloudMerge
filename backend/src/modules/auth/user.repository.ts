@@ -22,6 +22,21 @@ export class PrismaUserRepository implements IUserRepository {
   }
 
   async setRefreshTokenHash(id: string, hash: string | null) {
-    await prisma.user.update({ where: { id }, data: { refreshTokenHash: hash } });
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await prisma.user.update({ where: { id }, data: { refreshTokenHash: hash } });
+        return;
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        if (
+          attempt < 2 &&
+          (errMsg.includes("1020") || errMsg.includes("Record has changed") || errMsg.includes("deadlock"))
+        ) {
+          await new Promise((r) => setTimeout(r, 50 * (attempt + 1)));
+          continue;
+        }
+        throw err;
+      }
+    }
   }
 }
