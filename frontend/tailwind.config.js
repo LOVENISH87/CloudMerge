@@ -35,10 +35,10 @@ export default {
             danger: {
               DEFAULT: "#E53935",
               foreground: "#ffffff",
-            }
-          }
-        }
-      }
+            },
+          },
+        },
+      },
     }),
   ],
 };
