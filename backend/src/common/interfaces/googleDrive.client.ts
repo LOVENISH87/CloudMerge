@@ -26,6 +26,7 @@ export interface IGoogleDriveClient {
   uploadFile(name: string, mimeType: string, stream: Readable): Promise<DriveUploadResult>;
   downloadFile(fileId: string): Promise<Readable>;
   deleteFile(fileId: string): Promise<void>;
+  renameFile(fileId: string, newName: string): Promise<void>;
   listExistingFiles(): Promise<DriveFile[]>;
 }
 
@@ -73,6 +74,13 @@ export class GoogleDriveClient implements IGoogleDriveClient {
 
   async deleteFile(fileId: string): Promise<void> {
     await this.drive.files.delete({ fileId });
+  }
+  
+  async renameFile(fileId: string, newName: string): Promise<void> {
+    await this.drive.files.update({
+      fileId,
+      requestBody: { name: newName }
+    });
   }
 
   async listExistingFiles(): Promise<DriveFile[]> {

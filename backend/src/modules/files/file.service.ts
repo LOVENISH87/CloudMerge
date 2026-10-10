@@ -20,7 +20,15 @@ export class FileService {
   }
 
   async rename(userId: string, fileId: string, name: string) {
-    await this.get(userId, fileId);
+    const withAccount = await this.files.findByIdForUserWithAccount(fileId, userId);
+    if (!withAccount) throw Errors.notFound("File not found");
+
+    // Push the rename to Google Drive
+    const { accessToken, refreshToken } = decryptAccountTokens(withAccount.connectedAccount);
+    const drive = await GoogleDriveClient.create(accessToken, refreshToken);
+    await drive.renameFile(withAccount.googleFileId, name);
+
+    // Update in MySQL
     return this.files.rename(fileId, name);
   }
 
